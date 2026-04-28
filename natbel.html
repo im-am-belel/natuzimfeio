@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NatbelPaint - Pixel Art</title>
+<style>
+  body { background:#000; font-family:Arial,sans-serif; color:#fff; margin:0; padding:0; display:flex; flex-direction:column; align-items:center; }
+  .header { width:100%; text-align:center; padding:10px 0; font-size:2em; border-bottom:2px solid #fff; }
+  .main-container { display:flex; justify-content:center; align-items:flex-start; padding:20px; width:100%; }
+  .canvas-container { position:relative; border:2px solid #fff; background:#fff; }
+  canvas { cursor:crosshair; image-rendering:pixelated; display:block; }
+  #gridCanvas { position:absolute; top:0; left:0; pointer-events:none; z-index:10; }
+  .sidebar { background:#333; border:2px solid #fff; padding:10px; width:250px; display:flex; flex-direction:column; }
+  .tool-button { background:#555; color:#fff; border:1px solid #fff; padding:10px; margin-bottom:5px; cursor:pointer; font-size:1.2em; width:100%; text-align:left; }
+  .tool-button.active { background:#fff; color:#000; }
+  .save-button { background:#4CAF50; color:#fff; padding:10px; border:none; cursor:pointer; margin-top:20px; }
+  .modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:flex; justify-content:center; align-items:center; z-index:1000; }
+  .modal-content { background:#222; border:2px solid #fff; padding:30px; display:flex; flex-direction:column; gap:15px; text-align:center; }
+  .modal-content input { background:#333; border:1px solid #fff; color:#fff; padding:8px; text-align:center; }
+  .history-buttons { display:flex; justify-content:space-between; margin-top:10px; }
+  .history-buttons button { background:#555; color:#fff; border:1px solid #fff; padding:5px 10px; cursor:pointer; }
+  .history-buttons button:disabled { background:#333; color:#888; cursor:not-allowed; }
+</style>
+</head>
+<body>
+
+<div class="modal-overlay" id="startModal">
+  <div class="modal-content">
+    <h2>CONFIGURE SEU PIXEL ART:</h2>
+    <div>
+      <label>Pixels: </label>
+      <input type="number" id="pixelSize" value="32" min="8" max="128"> x
+      <input type="number" id="pixelSizeY" value="32" min="8" max="128">
+    </div>
+    <div>
+      <label>Nome: </label>
+      <input type="text" id="fileName" value="BlankPixelArt">
+    </div>
+    <div>
+      <label>Carregar: </label>
+      <input type="file" id="loadFile" accept="image/*">
+    </div>
+    <button class="save-button" id="createBtn">CRIAR</button>
+  </div>
+</div>
+
+<div class="header" id="mainHeader" style="display:none;">NATBELPAINT</div>
+
+<div class="main-container" id="mainApp" style="display:none;">
+  <div class="canvas-container">
+    <canvas id="myCanvas"></canvas>
+    <canvas id="gridCanvas"></canvas>
+  </div>
+  <div class="sidebar">
+    <input type="color" id="colorPicker" value="#000000">
+    <input type="range" id="size" min="1" max="20" value="1">
+    <input type="range" id="transparency" min="0" max="1" step="0.01" value="1">
+    <button class="tool-button active" id="lapis">Lápis</button>
+    <button class="tool-button" id="borracha">Borracha</button>
+    <button class="tool-button" id="linha">Linha</button>
+    <button class="tool-button" id="quadrado">Quadrado</button>
+    <button class="tool-button" id="circulo">Círculo</button>
+    <button class="tool-button" id="gradiente">Gradiente</button>
+    <button class="tool-button" id="balde">Balde</button>
+    <button class="tool-button" id="selecao">Seleção</button>
+    <div class="history-buttons">
+      <button id="undoBtn">Desfazer</button>
+      <button id="redoBtn">Refazer</button>
+    </div>
+    <button class="save-button" id="saveBtn">Salvar</button>
+  </div>
+</div>
+
+<div id="toolStatusContainer" style="margin-top:10px; display:none;">
+  <span id="tool-status">Lápis selecionado</span>
+</div>
+
+<script>
+const canvas=document.getElementById('myCanvas');
+const ctx=canvas.getContext('2d');
+const gridCanvas=document.getElementById('gridCanvas');
+const gridCtx=gridCanvas.getContext('2d');
+const colorPicker=document.getElementById('colorPicker');
+const sizeInput=document.getElementById('size');
+const transInput=document.getElementById('transparency');
+const toolButtons=document.querySelectorAll('.tool-button');
+const toolStatus=document.getElementById('tool-status');
+let currentTool='lapis', pixelSizeX, pixelSizeY, pixelScale=1;
+let isDrawing=false, startX=0,startY=0;
+let history=[], historyIndex=-1;
+
+function initCanvas(img){
+  const max=600;
+  pixelScale=Math.floor(Math.min(max/pixelSizeX,max/pixelSizeY));
+  canvas.width=pixelSizeX*pixelScale;
+  canvas.height=pixelSizeY*pixelScale;
+  gridCanvas.width=canvas.width; gridCanvas.height=canvas.height;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  if(img){ctx.drawImage(img,0,0,canvas.width,canvas.height);}
+  saveState(); drawGrid();
+}
+
+function drawGrid(){
+  gridCtx.clearRect(0,0,gridCanvas.width,gridCanvas.height);
+  gridCtx.strokeStyle="rgba(0,0,0,0.3)";
+  for(let x=0;x<=pixelSizeX;x++){gridCtx.beginPath();gridCtx.moveTo(x*pixelScale,0);gridCtx.lineTo(x*pixelScale,gridCanvas.height);gridCtx.stroke();}
+  for(let y=0;y<=pixelSizeY;y++){gridCtx.beginPath();gridCtx.moveTo(0,y*pixelScale);gridCtx.lineTo(gridCanvas.width,y*pixelScale);gridCtx.stroke();}
+}
+
+function getPos(e){const r=canvas.getBoundingClientRect();const cx=(e.clientX||e.touches[0].clientX)-r.left;const cy=(e.clientY||e.touches[0].clientY)-r.top;return {x:Math.floor(cx/pixelScale),y:Math.floor(cy/pixelScale)};}
+function drawPixel(x,y,size,col,a){ctx.globalAlpha=a;ctx.fillStyle=col;const off=Math.floor(size/2);ctx.fillRect((x-off)*pixelScale,(y-off)*pixelScale,size*pixelScale,size*pixelScale);ctx.globalAlpha=1;}
+function erasePixel(x,y,size){const off=Math.floor(size/2);ctx.clearRect((x-off)*pixelScale,(y-off)*pixelScale,size*pixelScale,size*pixelScale);}
+
+function drawLine(x0,y0,x1,y1,size,col,a){
+  let dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=(x0<x1)?1:-1,sy=(y0<y1)?1:-1,err=dx-dy;
+  while(true){drawPixel(x0,y0,size,col,a);if(x0===x1&&y0===y1)break;let e2=2*err;if(e2>-dy){err-=dy;x0+=sx;}if(e2<dx){err+=dx;y0+=sy;}}
+}
+
+function drawRect(x0,y0,x1,y1,size,col,a){for(let x=x0;x<=x1;x++){drawPixel(x,y0,size,col,a);drawPixel(x,y1,size,col,a);}for(let y=y0;y<=y1;y++){drawPixel(x0,y,size,col,a);drawPixel(x1,y,size,col,a);}}
+function drawCircle(x0,y0,x1,y1,size,col,a){let r=Math.round(Math.sqrt((x1-x0)**2+(y1-y0)**2));let x=r,y=0,err=0;while(x>=y){drawPixel(x0+x,y0+y,size,col,a);drawPixel(x0+y,y0+x,size,col,a);drawPixel(x0-x,y0+y,size,col,a);drawPixel(x0-y,y0+x,size,col,a);drawPixel(x0-x,y0-y,size,col,a);drawPixel(x0-y,y0-x,size,col,a);drawPixel(x0+x,y0-y,size,col,a);drawPixel(x0+y,y0-x,size,col,a);if(err<=0){y++;err+=2*y+1;}if(err>0){x--;err-=2*x+1;}}}
+
+function floodFill(x,y,fillColor){
+  let imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
+  let data=imgData.data;
+  let target=ctx.getImageData(x*pixelScale,y*pixelScale,1,1).data;
+  let match=(d,i)=>d[i]===target[i]&&d[i+1]===target[i+1]&&d[i+2]===target[i+2]&&d[i+3]===target[i+3];
+  let stack=[[x,y]];
+  let c=parseInt(fillColor.slice(1),16);let r=(c>>16)&255,g=(c>>8)&255,b=c&255;
+  while(stack.length){
+    let [px,py]=stack.pop();if(px<0||py<0||px>=pixelSizeX||py>=pixelSizeY)continue;
+    let i=((py*pixelScale*canvas.width)+(px*pixelScale))*4;
+    if(match(data,i)){for(let dy=0;dy<pixelScale;dy++){for(let dx=0;dx<pixelScale;dx++){let ii=((py*pixelScale+dy)*canvas.width+(px*pixelScale+dx))*4;data[ii]=r;data[ii+1]=g;data[ii+2]=b;data[ii+3]=255;}}stack.push([px+1,py]);stack.push([px-1,py]);stack.push([px,py+1]);stack.push([px,py-1]);}}
+  }
+  ctx.putImageData(imgData,0,0);
+}
+
+function saveState(){if(historyIndex<history.length-1)history=history.slice(0,historyIndex+1);history.push(canvas.toDataURL());historyIndex++;}
+function restoreState(i){let img=new Image();img.src=history[i];img.onload=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0);drawGrid();};}
+
+canvas.addEventListener("mousedown",e=>{
+  isDrawing=true;const p=getPos(e);startX=p.x;startY=p.y;
+  if(currentTool==="lapis"){saveState();drawPixel(p.x,p.y,parseInt(sizeInput.value),colorPicker.value,parseFloat(transInput.value));}
+  if(currentTool==="borracha"){saveState();erasePixel(p.x,p.y,parseInt(sizeInput.value));}
+  if(currentTool==="balde"){saveState();floodFill(p.x,p.y,colorPicker.value);}
+});
+canvas.addEventListener("mousemove",e=>{
+  if(!isDrawing)return;const p=getPos(e);
+  if(currentTool==="lapis")drawPixel(p.x,p.y,parseInt(sizeInput.value),colorPicker.value,parseFloat(transInput.value));
+  if(currentTool==="borracha")erasePixel(p.x,p.y,parseInt(sizeInput.value));
+});
+canvas.addEventListener("mouseup",e=>{
+  if(!isDrawing)return;isDrawing=false;const p=getPos(e);
+  if(currentTool==="linha"){saveState();drawLine(startX,startY,p.x,p.y,parseInt(sizeInput.value),colorPicker.value,parseFloat(transInput.value));}
+  if(currentTool==="quadrado"){saveState();drawRect(startX,startY,p.x,p.y,parseInt(sizeInput.value),colorPicker.value,parseFloat(transInput.value));}
+  if(currentTool==="circulo"){saveState();drawCircle(startX,startY,p.x,p.y,parseInt(sizeInput.value),colorPicker.value,parseFloat(transInput.value));}
+  saveState();
+});
+
+toolButtons.forEach(btn=>btn.onclick=()=>{toolButtons.forEach(b=>b.classList.remove("active"));btn.classList.add("active");currentTool=btn.id;toolStatus.textContent=btn.textContent+" selecionado";});
+
+document.getElementById("saveBtn").onclick=()=>{const link=document.createElement("a");link.download="pixel.png";link.href=canvas.toDataURL();link.click();};
+document.getElementById("createBtn").onclick=()=>{pixelSizeX=parseInt(document.getElementById("pixelSize").value);pixelSizeY=parseInt(document.getElementById("pixelSizeY").value);const file=document.getElementById("loadFile").files[0];if(file){const img=new Image();img.onload=()=>{initCanvas(img);};img.src=URL.createObjectURL(file);}else{initCanvas();}document.getElementById("startModal").style.display="none";document.getElementById("mainHeader").style.display="block";document.getElementById("mainApp").style.display="flex";document.getElementById("toolStatusContainer").style.display="block";};
+
+document.getElementById("undoBtn").onclick=()=>{if(historyIndex>0){historyIndex--;restoreState(historyIndex);}};
+document.getElementById("redoBtn").onclick=()=>{if(historyIndex<history.length-1){historyIndex++;restoreState(historyIndex);}};
+
+document.addEventListener("keydown",e=>{
+  if(e.ctrlKey&&e.key==="z"){document.getElementById("undoBtn").click();}
+  if(e.ctrlKey&&e.key==="y"){document.getElementById("redoBtn").click();}
+});
+</script>
+</body>
+</html>
