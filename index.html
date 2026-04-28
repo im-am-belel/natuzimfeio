@@ -2,46 +2,63 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Provas</title>
+<title>Detector Bugado</title>
 
 <style>
 body {
     margin: 0;
     background: black;
     color: white;
-    font-family: Arial, sans-serif;
+    font-family: Arial;
     overflow: hidden;
+}
+
+/* MENU */
+.menu {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    background: #111;
+    padding: 10px;
     text-align: center;
 }
 
-h1 {
-    font-size: 50px;
-    margin-top: 50px;
-    animation: glitch 1s infinite;
+.menu button {
+    margin: 5px;
+    padding: 10px;
+    background: purple;
+    color: white;
+    border: none;
+    cursor: pointer;
 }
 
-.texto {
-    font-size: 30px;
-    opacity: 0;
-    animation: aparecer 2s forwards;
+/* SEÇÕES */
+.section {
+    display: none;
+    padding-top: 80px;
+    text-align: center;
 }
 
-.texto:nth-child(2) { animation-delay: 2s; }
-.texto:nth-child(3) { animation-delay: 4s; }
+.active {
+    display: block;
+}
 
-.final {
+/* IMG */
+img {
+    width: 250px;
+    border-radius: 20px;
+    animation: zoom 2s infinite alternate;
+}
+
+@keyframes zoom {
+    from { transform: scale(1); }
+    to { transform: scale(1.2) rotate(3deg); }
+}
+
+/* TEXTO */
+.glitch {
     font-size: 40px;
-    color: red;
-    margin-top: 40px;
-    opacity: 0;
-    animation: aparecer 2s forwards;
-    animation-delay: 6s;
-}
-
-@keyframes aparecer {
-    to {
-        opacity: 1;
-    }
+    animation: glitch 1s infinite;
 }
 
 @keyframes glitch {
@@ -49,22 +66,102 @@ h1 {
     50% { text-shadow: -2px -2px blue; }
     100% { text-shadow: 2px -2px green; }
 }
+
+/* POPUP */
+.popup {
+    position: fixed;
+    background: black;
+    border: 2px solid red;
+    color: red;
+    padding: 20px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: none;
+}
 </style>
 </head>
 
 <body>
 
-<h1>PROVAS QUE NATUZIM É FEIO</h1>
+<div class="menu">
+    <button onclick="show('home')">Home</button>
+    <button onclick="show('analise')">Análise</button>
+    <button onclick="show('imagem')">Imagem</button>
+    <button onclick="virus()">FINAL 😈</button>
+</div>
 
-<div class="texto">Ele é beta 💀</div>
-<div class="texto">Não tem aura 🗿</div>
+<!-- HOME -->
+<div id="home" class="section active">
+    <h1 class="glitch">Detector de Aura BUGADO</h1>
+    <p>Resultados podem estar completamente errados 💀</p>
+</div>
 
-<div class="final">Natuzim 100% sem aura e betice</div>
+<!-- ANALISE -->
+<div id="analise" class="section">
+    <h1>Análise</h1>
+    <p>⚠ Sistema confuso</p>
+    <p>⚠ Energia não detectada</p>
+    <p>⚠ Resultado: ???</p>
+</div>
 
-<!-- som zoado -->
-<audio autoplay loop>
-    <source src="https://www.myinstants.com/media/sounds/fart-with-reverb.mp3" type="audio/mpeg">
+<!-- IMAGEM -->
+<div id="imagem" class="section">
+    <h1>Imagem analisada</h1>
+    <img src="foto.png">
+</div>
+
+<!-- POPUP -->
+<div id="popup" class="popup"></div>
+
+<!-- SOM -->
+<audio id="som" loop>
+    <source src="https://www.myinstants.com/media/sounds/windows-error.mp3">
 </audio>
+
+<script>
+function show(id){
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+
+    if(Math.random() > 0.7){
+        alert("⚠ SISTEMA BUGOU");
+    }
+}
+
+function virus(){
+    let popup = document.getElementById("popup");
+    popup.style.display = "block";
+    document.getElementById("som").play();
+
+    let count = 0;
+
+    let intervalo = setInterval(() => {
+        let div = document.createElement("div");
+        div.style.position = "absolute";
+        div.style.left = Math.random()*window.innerWidth + "px";
+        div.style.top = Math.random()*window.innerHeight + "px";
+        div.style.color = "red";
+        div.innerText = "ERRO NO SISTEMA";
+        document.body.appendChild(div);
+
+        count++;
+
+        if(count > 40){
+            clearInterval(intervalo);
+            popup.innerHTML = "💀 SISTEMA TOTALMENTE QUEBRADO 💀";
+        }
+    }, 100);
+}
+
+/* efeito aleatório */
+setInterval(() => {
+    if(Math.random() > 0.85){
+        document.body.style.background = "darkred";
+        setTimeout(()=> document.body.style.background="black", 200);
+    }
+}, 1000);
+</script>
 
 </body>
 </html>
