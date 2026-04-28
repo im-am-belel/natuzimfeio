@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Provas</title>
+
+<style>
+body {
+    margin: 0;
+    background: black;
+    color: white;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+    text-align: center;
+}
+
+h1 {
+    font-size: 50px;
+    margin-top: 50px;
+    animation: glitch 1s infinite;
+}
+
+.texto {
+    font-size: 30px;
+    opacity: 0;
+    animation: aparecer 2s forwards;
+}
+
+.texto:nth-child(2) { animation-delay: 2s; }
+.texto:nth-child(3) { animation-delay: 4s; }
+
+.final {
+    font-size: 40px;
+    color: red;
+    margin-top: 40px;
+    opacity: 0;
+    animation: aparecer 2s forwards;
+    animation-delay: 6s;
+}
+
+@keyframes aparecer {
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes glitch {
+    0% { text-shadow: 2px 2px red; }
+    50% { text-shadow: -2px -2px blue; }
+    100% { text-shadow: 2px -2px green; }
+}
+</style>
+</head>
+
+<body>
+
+<h1>PROVAS QUE NATUZIM É FEIO</h1>
+
+<div class="texto">Ele é beta 💀</div>
+<div class="texto">Não tem aura 🗿</div>
+
+<div class="final">Natuzim 100% sem aura e betice</div>
+
+<!-- som zoado -->
+<audio autoplay loop>
+    <source src="https://www.myinstants.com/media/sounds/fart-with-reverb.mp3" type="audio/mpeg">
+</audio>
+
+</body>
+</html>
